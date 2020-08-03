@@ -243,9 +243,11 @@
                     updColor = !!(flags & 0x02);
                     updName = !!(flags & 0x08);
                     updSkin = !!(flags & 0x04);
+                    updRank = !!(flags & 0x40);
                     color = updColor ? bytesToColor(reader.getUint8(), reader.getUint8(), reader.getUint8()) : null;
                     skin = updSkin ? reader.getStringUTF8() : null;
                     name = updName ? reader.getStringUTF8() : null;
+                    rank = updRank ? reader.getUint16() : null;
 
                     if (cells.byId.hasOwnProperty(id)) {
                         cell = cells.byId[id];
@@ -260,8 +262,9 @@
                         if (color) cell.setColor(color);
                         if (skin) cell.setSkin(skin);
                         if (name) cell.setName(name);
+                        if (rank) cell.setRank(rank);
                     } else {
-                        cell = new Cell(id, x, y, s, name, color, skin, flags);
+                        cell = new Cell(id, x, y, s, name, color, skin, rank, flags);
                         cells.byId[id] = cell;
                         cells.list.push(cell);
                     }
@@ -887,7 +890,7 @@
         cameraZInvd = 1 / cameraZ;
     }
 
-    function Cell(id, x, y, s, name, color, skin, flags) {
+    function Cell(id, x, y, s, name, color, skin, rank, flags) {
         this.id = id;
         this.x = this.nx = this.ox = x;
         this.y = this.ny = this.oy = y;
@@ -895,6 +898,7 @@
         this.setColor(color);
         this.setName(name);
         this.setSkin(skin);
+        this.setRank(rank);
         this.jagged = flags & 0x01 || flags & 0x10;
         this.ejected = !!(flags & 0x20);
         this.born = syncUpdStamp;
@@ -939,6 +943,9 @@
                 this.name = value.replace(nameSkin[0], "").trim();
                 this.setSkin(nameSkin[1]);
             } else this.name = value;
+        },
+        setRank: function(value) {
+            this.rank = value;
         },
         setSkin: function(value) {
             this.skin = (value && value[0] === "%" ? value.slice(1) : value) || this.skin;
@@ -1009,15 +1016,23 @@
         },
         drawText: function(ctx) {
             if (this.s < 20 || this.jagged) return;
+            var rank = this.rank.toString();
             if (settings.showMass && (cells.mine.indexOf(this.id) !== -1 || cells.mine.length === 0)) {
                 var mass = (~~(this.s * this.s / 100)).toString();
                 if (this.name && settings.showNames) {
                     drawText(ctx, false, this.x, this.y, this.nameSize, this.drawNameSize, this.name);
                     var y = this.y + Math.max(this.s / 4.5, this.nameSize / 1.5);
                     drawText(ctx, true, this.x, y, this.nameSize / 2, this.drawNameSize / 2, mass);
-                } else drawText(ctx, true, this.x, this.y, this.nameSize / 2, this.drawNameSize / 2, mass);
-            } else if (this.name && settings.showNames)
+                } else {
+                    drawText(ctx, true, this.x, this.y, this.nameSize / 2, this.drawNameSize / 2, mass);
+                }
+            } else if (this.name && settings.showNames) {
                 drawText(ctx, false, this.x, this.y, this.nameSize, this.drawNameSize, this.name);
+            }
+            if (this.rank) {
+                var ry = this.y - Math.max(this.s / 3.5, this.nameSize / 1.5);
+                drawText(ctx, true, this.x, ry, this.nameSize / 1.5, this.drawNameSize / 1.5, rank);
+            }
         }
     };
 
