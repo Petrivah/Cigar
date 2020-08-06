@@ -1,3 +1,5 @@
+import '../css/index.css';
+import '../css/gallery.css';
 (function(wHandle, wjQuery) {
     if (navigator.appVersion.indexOf("MSIE") != -1)
 	   alert("You're using a pretty old browser, some parts of the website might not work properly.");
@@ -708,7 +710,7 @@
         mainCtx.lineWidth = 1;
         mainCtx.strokeStyle = settings.darkTheme ? "#AAA" : "#000";
         mainCtx.globalAlpha = 0.2;
-        var step = 50, i;
+        var step = 50, i,
             cW = mainCanvas.width / cameraZ, cH = mainCanvas.height / cameraZ,
             startLeft = (-cameraX + cW / 2) % step,
             startTop = (-cameraY + cH / 2) % step;
