@@ -4,7 +4,8 @@
   "description": "Continued version of Luka967's Cigar",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "webpack --mode production",
+    "dev": "webpack-dev-server --open"
   },
   "repository": {
     "type": "git",
