@@ -10,6 +10,7 @@ import Color from './util/Color';
 import Hacker from './util/Hack';
 
 import Chat from './game/Chat';
+import Leaderboard from './game/Leaderboard';
 
 import Connection from './network/Connection';
 
@@ -35,6 +36,7 @@ var settings = {
 };
 
 const chat = new Chat(settings);
+const leaderboard = new Leaderboard(settings);
 
 var SKIN_URL = "./skins/",
     PI_2 = Math.PI * 2,
@@ -152,7 +154,7 @@ function wsMessage(data) {
             var count = reader.getUint32();
             for (i = 0; i < count; ++i)
                 leaderboard.items.push(reader.getStringUTF8());
-            drawLeaderboard();
+            leaderboard.draw();
             break;
         case 0x31: // ffa list
             leaderboard.items = [];
@@ -164,7 +166,7 @@ function wsMessage(data) {
                     me: !!reader.getUint32(),
                     name: reader.getStringUTF8() || "An unnamed cell"
                 });
-            drawLeaderboard();
+            leaderboard.draw();
             break;
         case 0x32: // pie chart
             leaderboard.items = [];
@@ -173,7 +175,7 @@ function wsMessage(data) {
             var count = reader.getUint32();
             for (i = 0; i < count; ++i)
                 leaderboard.items.push(reader.getFloat32());
-            drawLeaderboard();
+            leaderboard.draw();
             break;
         case 0x40: // set border
             border.left = reader.getFloat64();
@@ -264,7 +266,7 @@ function sendChat(text) {
 function gameReset() {
     Misc.cleanupObject(cells);
     Misc.cleanupObject(border);
-    Misc.cleanupObject(leaderboard);
+    leaderboard.cleanup();
     chat.cleanup();
     Misc.cleanupObject(stats);
     leaderboard.items = [];
@@ -291,12 +293,7 @@ var border = Object.create({
     centerX: -1,
     centerY: -1
 });
-var leaderboard = Object.create({
-    type: NaN,
-    items: null,
-    canvas: document.createElement("canvas"),
-    teams: ["#F33", "#3F3", "#33F"]
-});
+
 var stats = Object.create({
     framesPerSecond: 0,
     latency: NaN,
@@ -435,59 +432,6 @@ function prettyPrintTime(seconds) {
     return days + "d";
 }
 
-function drawLeaderboard() {
-    if (leaderboard.type === NaN) return leaderboard.visible = false;
-    if (!settings.showNames || leaderboard.items.length === 0)
-        return leaderboard.visible = false;
-    leaderboard.visible = true;
-    var canvas = leaderboard.canvas;
-    var ctx = canvas.getContext("2d");
-    var len = leaderboard.items.length;
-
-    canvas.width = 200;
-    canvas.height = leaderboard.type !== "pie" ? 60 + 24 * len : 240;
-
-    ctx.globalAlpha = .4;
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, 200, canvas.height);
-
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = "#FFF";
-    ctx.font = "30px Ubuntu";
-    ctx.fillText("Leaderboard", 100 - ctx.measureText("Leaderboard").width / 2, 40);
-
-    if (leaderboard.type === "pie") {
-        var last = 0;
-        for (var i = 0; i < len; i++) {
-            ctx.fillStyle = leaderboard.teams[i];
-            ctx.beginPath();
-            ctx.moveTo(100, 140);
-            ctx.arc(100, 140, 80, last, (last += leaderboard.items[i] * PI_2), false);
-            ctx.closePath();
-            ctx.fill();
-        }
-    } else {
-        var text, isMe = false, w, start;
-        ctx.font = "20px Ubuntu";
-        for (var i = 0; i < len; i++) {
-            if (leaderboard.type === "text")
-                text = leaderboard.items[i];
-            else
-                text = leaderboard.items[i].name,
-                isMe = leaderboard.items[i].me;
-
-            // replace {skin} with empty string
-            var reg = /\{([\w]+)\}/.exec(text);
-            if (reg) text = text.replace(reg[0], "").trim();
-
-            ctx.fillStyle = isMe ? "#FAA" : "#FFF";
-            if (leaderboard.type === "ffa")
-                text = (i + 1) + ". " + (text || "An unnamed cell");
-            var start = ((w = ctx.measureText(text).width) > 200) ? 2 : 100 - w * 0.5;
-            ctx.fillText(text, start, 70 + 24 * i);
-        }
-    }
-}
 function drawGrid() {
     mainCtx.save();
     mainCtx.lineWidth = 1;
@@ -1090,7 +1034,7 @@ window.setColors = function(a) {
 };
 window.setNames = function(a) {
     settings.showNames = a;
-    drawLeaderboard();
+    leaderboard.draw();
 };
 window.setChatHide = function(a) {
     settings.showChat = !a;
