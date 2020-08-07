@@ -9,16 +9,16 @@ import Misc from './util/Misc';
 import Color from './util/Color';
 import Hacker from './util/Hack';
 
+import Connection from './network/Connection';
+
 Hacker.hack();
 Misc.checkIE();
 
 const logger = new Logger(4);
+const connection = new Connection(logger, "https:" == window.location.protocol);
 
-var LOAD_START = Date.now();
 
-var wsUrl = null,
-    SKIN_URL = "./skins/",
-    USE_HTTPS = "https:" == window.location.protocol,
+var SKIN_URL = "./skins/",
     PI_2 = Math.PI * 2,
     SEND_254 = new Uint8Array([254, 6, 0, 0, 0]),
     SEND_255 = new Uint8Array([255, 1, 0, 0, 0]),
@@ -34,52 +34,19 @@ var wsUrl = null,
         254: new Uint8Array([254])
     };
 
-function wsCleanup() {
-    if (!ws) return;
-    logger.debug("ws cleanup trigger");
-    ws.onopen = null;
-    ws.onmessage = null;
-    ws.close();
-    ws = null;
-}
-function wsInit(url) {
-    if (ws) {
-        logger.debug("ws init on existing conn");
-        wsCleanup();
-    }
-    $("#connecting").show();
-    ws = new WebSocket(`ws${USE_HTTPS ? "s" : ""}://${wsUrl = url}`);
-    ws.binaryType = "arraybuffer";
-    ws.onopen = wsOpen;
-    ws.onmessage = wsMessage;
-    ws.onerror = wsError;
-    ws.onclose = wsClose;
-}
-function wsOpen() {
-    disconnectDelay = 1000;
-    $("#connecting").hide();
-    wsSend(SEND_254);
-    wsSend(SEND_255);
-    logger.debug(`ws connected, using https: ${USE_HTTPS}`);
-}
-function wsError(error) {
-    logger.warn(error);
-}
-function wsClose(e) {
-    logger.debug(`ws disconnected ${e.code} '${e.reason}'`);
-    wsCleanup();
-    gameReset();
-    setTimeout(function() {
-        if (ws && ws.readyState === 1) return;
-        wsInit(wsUrl);
-    }, disconnectDelay *= 1.5);
-}
-function wsSend(data) {
-    if (!ws) return;
-    if (ws.readyState !== 1) return;
-    if (data.build) ws.send(data.build());
-    else ws.send(data);
-}
+connection.on('init', () => $("#connecting").show());
+connection.on('open', () => $("#connecting").hide());
+connection.on('error', () => {});
+connection.on('open', () => {
+    connection.send(SEND_254);
+    connection.send(SEND_255);
+})
+connection.on('close', gameReset);
+connection.on('message', wsMessage);
+
+var LOAD_START = Date.now();
+
+
 function wsMessage(data) {
     syncUpdStamp = Date.now();
     var reader = new Reader(new DataView(data.data), 0, true);
@@ -209,7 +176,7 @@ function wsMessage(data) {
             reader.getUint32(); // game type
             if (!/MultiOgar|OgarII/.test(reader.getStringUTF8()) || stats.pingLoopId) break;
             stats.pingLoopId = setInterval(function() {
-                wsSend(UINT8_CACHE[254]);
+                connection.send(UINT8_CACHE[254]);
                 stats.pingLoopStamp = Date.now();
             }, 2000);
             break;
@@ -249,7 +216,7 @@ function wsMessage(data) {
             break;
         default:
             // invalid packet
-            wsCleanup();
+            connection.cleanup();
             break;
     }
 }
@@ -259,21 +226,21 @@ function sendMouseMove(x, y) {
     writer.setUint32(x);
     writer.setUint32(y);
     writer._b.push(0, 0, 0, 0);
-    wsSend(writer);
+    connection.send(writer);
 }
 function sendPlay(name) {
     logger.debug("play trigger");
     var writer = new Writer(true);
     writer.setUint8(0x00);
     writer.setStringUTF8(name);
-    wsSend(writer);
+    connection.send(writer);
 }
 function sendChat(text) {
     var writer = new Writer();
     writer.setUint8(0x63);
     writer.setUint8(0);
     writer.setStringUTF8(text);
-    wsSend(writer);
+    connection.send(writer);
 }
 
 function gameReset() {
@@ -332,8 +299,7 @@ var stats = Object.create({
     maxScore: 0
 });
 
-var ws = null;
-var wsUrl = null;
+
 var disconnectDelay = 1000;
 
 var syncUpdStamp = Date.now();
@@ -1049,37 +1015,37 @@ function init() {
                 break;
             case 32: // space
                 if (isTyping || escOverlayShown || pressed.space) break;
-                wsSend(UINT8_CACHE[17]);
+                connection.send(UINT8_CACHE[17]);
                 pressed.space = true;
                 break;
             case 87: // W
                 if (isTyping || escOverlayShown) break;
-                wsSend(UINT8_CACHE[21]);
+                connection.send(UINT8_CACHE[21]);
                 pressed.w = true;
                 break;
             case 81: // Q
                 if (isTyping || escOverlayShown || pressed.q) break;
-                wsSend(UINT8_CACHE[18]);
+                connection.send(UINT8_CACHE[18]);
                 pressed.q = true;
                 break;
             case 69: // E
                 if (isTyping || escOverlayShown || pressed.e) break;
-                wsSend(UINT8_CACHE[22]);
+                connection.send(UINT8_CACHE[22]);
                 pressed.e = true;
                 break;
             case 82: // R
                 if (isTyping || escOverlayShown || pressed.r) break;
-                wsSend(UINT8_CACHE[23]);
+                connection.send(UINT8_CACHE[23]);
                 pressed.r = true;
                 break;
             case 84: // T
                 if (isTyping || escOverlayShown || pressed.t) break;
-                wsSend(UINT8_CACHE[24]);
+                connection.send(UINT8_CACHE[24]);
                 pressed.t = true;
                 break;
             case 80: // P
                 if (isTyping || escOverlayShown || pressed.p) break;
-                wsSend(UINT8_CACHE[25]);
+                connection.send(UINT8_CACHE[25]);
                 pressed.p = true;
                 break;
             case 27: // esc
@@ -1099,7 +1065,7 @@ function init() {
                 pressed.w = false;
                 break;
             case 81: // Q
-                if (pressed.q) wsSend(UINT8_CACHE[19]);
+                if (pressed.q) connection.send(UINT8_CACHE[19]);
                 pressed.q = false;
                 break;
             case 69: // E
@@ -1150,14 +1116,14 @@ function init() {
 
     if (settings.allowGETipSet && window.location.search) {
         var div = /ip=([\w\W]+):([0-9]+)/.exec(window.location.search.slice(1))
-        if (div) wsInit(`${div[1]}:${div[2]}`);
+        if (div) connection.init(`${div[1]}:${div[2]}`);
     }
 
     window.requestAnimationFrame(drawGame);
 }
 window.setserver = function(arg) {
-    if (wsUrl === arg) return;
-    wsInit(arg);
+    if (connection.url === arg) return;
+    connection.init(arg);
 };
 window.setDarkTheme = function(a) {
     settings.darkTheme = a;
@@ -1184,7 +1150,7 @@ window.setMinimap = function(a) {
     settings.showMinimap = !a;
 };
 window.spectate = function(a) {
-    wsSend(UINT8_CACHE[1]);
+    connection.send(UINT8_CACHE[1]);
     stats.maxScore = 0;
     hideESCOverlay();
 };
