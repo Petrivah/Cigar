@@ -4,19 +4,15 @@ import '../css/gallery.css';
 import Reader from './byte/Reader';
 import Writer from './byte/Writer';
 
+import Misc from './util/Misc';
 import Color from './util/Color';
 import Hacker from './util/Hack';
-Hacker.hack();
 
-if (navigator.appVersion.indexOf("MSIE") != -1)
-    alert("You're using a pretty old browser, some parts of the website might not work properly.");
+Hacker.hack();
+Misc.checkIE();
 
 var LOAD_START = Date.now();
 
-function cleanupObject(object) {
-    for (var i in object)
-        delete object[i];
-}
 
 var log = {
     verbosity: 4,
@@ -287,11 +283,11 @@ function sendChat(text) {
 }
 
 function gameReset() {
-    cleanupObject(cells);
-    cleanupObject(border);
-    cleanupObject(leaderboard);
-    cleanupObject(chat);
-    cleanupObject(stats);
+    Misc.cleanupObject(cells);
+    Misc.cleanupObject(border);
+    Misc.cleanupObject(leaderboard);
+    Misc.cleanupObject(chat);
+    Misc.cleanupObject(stats);
     chat.messages = [];
     leaderboard.items = [];
     cells.mine = [];
@@ -671,7 +667,7 @@ function drawGame() {
     stats.framesPerSecond += (1000 / Math.max(Date.now() - syncAppStamp, 1) - stats.framesPerSecond) / 10;
     syncAppStamp = Date.now();
 
-    var drawList = cells.list.slice(0).sort(cellSort);
+    var drawList = cells.list.slice(0).sort(Misc.cellSort);
     for (var i = 0, l = drawList.length; i < l; i++)
         drawList[i].update(syncAppStamp);
     cameraUpdate();
@@ -726,10 +722,6 @@ function drawGame() {
 
     cacheCleanup();
     window.requestAnimationFrame(drawGame);
-}
-
-function cellSort(a, b) {
-    return a.s === b.s ? a.id - b.id : a.s - b.s;
 }
 
 function cameraUpdate() {
