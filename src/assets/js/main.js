@@ -4,6 +4,7 @@ import '../css/gallery.css';
 import Reader from './byte/Reader';
 import Writer from './byte/Writer';
 
+import Logger from './util/Logger';
 import Misc from './util/Misc';
 import Color from './util/Color';
 import Hacker from './util/Hack';
@@ -11,16 +12,9 @@ import Hacker from './util/Hack';
 Hacker.hack();
 Misc.checkIE();
 
+const logger = new Logger(4);
+
 var LOAD_START = Date.now();
-
-
-var log = {
-    verbosity: 4,
-    error: function(a) { if (log.verbosity <= 0) return; console.error(a); },
-    warn: function(a) { if (log.verbosity <= 1) return; console.warn(a); },
-    info: function(a) { if (log.verbosity <= 2) return; console.info(a); },
-    debug: function(a) { if (log.verbosity <= 3) return; console.debug(a); }
-};
 
 var wsUrl = null,
     SKIN_URL = "./skins/",
@@ -42,7 +36,7 @@ var wsUrl = null,
 
 function wsCleanup() {
     if (!ws) return;
-    log.debug("ws cleanup trigger");
+    logger.debug("ws cleanup trigger");
     ws.onopen = null;
     ws.onmessage = null;
     ws.close();
@@ -50,7 +44,7 @@ function wsCleanup() {
 }
 function wsInit(url) {
     if (ws) {
-        log.debug("ws init on existing conn");
+        logger.debug("ws init on existing conn");
         wsCleanup();
     }
     $("#connecting").show();
@@ -66,13 +60,13 @@ function wsOpen() {
     $("#connecting").hide();
     wsSend(SEND_254);
     wsSend(SEND_255);
-    log.debug(`ws connected, using https: ${USE_HTTPS}`);
+    logger.debug(`ws connected, using https: ${USE_HTTPS}`);
 }
 function wsError(error) {
-    log.warn(error);
+    logger.warn(error);
 }
 function wsClose(e) {
-    log.debug(`ws disconnected ${e.code} '${e.reason}'`);
+    logger.debug(`ws disconnected ${e.code} '${e.reason}'`);
     wsCleanup();
     gameReset();
     setTimeout(function() {
@@ -161,7 +155,7 @@ function wsMessage(data) {
             cells.mine = [];
             break;
         case 0x15: // draw line
-            log.warn("got packer 0x15 (draw line) which is unsupported");
+            logger.warn("got packer 0x15 (draw line) which is unsupported");
             break;
         case 0x20: // new cell
             cells.mine.push(reader.getUint32());
@@ -268,7 +262,7 @@ function sendMouseMove(x, y) {
     wsSend(writer);
 }
 function sendPlay(name) {
-    log.debug("play trigger");
+    logger.debug("play trigger");
     var writer = new Writer(true);
     writer.setUint8(0x00);
     writer.setStringUTF8(name);
@@ -819,7 +813,7 @@ Cell.prototype = {
         loadedSkins[this.skin].src = `${SKIN_URL}${this.skin}.png`;
     },
     setColor: function(value) {
-        if (!value) { log.warn("got no color"); return; }
+        if (!value) { logger.warn("got no color"); return; }
         this.color = value.toString();
         this.sColor = value.darken().toString();
     },
@@ -1150,7 +1144,7 @@ function init() {
         viewMult = Math.sqrt(Math.min(cH / 1080, cW / 1920));
     };
     window.onresize();
-    log.info(`init done in ${Date.now() - LOAD_START}ms`);
+    logger.info(`init done in ${Date.now() - LOAD_START}ms`);
     gameReset();
     showESCOverlay();
 
