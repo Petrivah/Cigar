@@ -310,9 +310,6 @@ var stats = Object.create({
     maxScore: 0
 });
 
-
-var disconnectDelay = 1000;
-
 var syncUpdStamp = Date.now();
 var syncAppStamp = Date.now();
 
