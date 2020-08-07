@@ -9,6 +9,8 @@ import Misc from './util/Misc';
 import Color from './util/Color';
 import Hacker from './util/Hack';
 
+import Chat from './game/Chat';
+
 import Connection from './network/Connection';
 
 Hacker.hack();
@@ -17,6 +19,22 @@ Misc.checkIE();
 const logger = new Logger(4);
 const connection = new Connection(logger, "https:" == window.location.protocol);
 
+var settings = {
+    mobile: "createTouch" in document,
+    showMass: false,
+    showNames: true,
+    showLeaderboard: true,
+    showChat: true,
+    showGrid: true,
+    showTextOutline: true,
+    showColor: true,
+    showSkins: true,
+    showMinimap: true,
+    darkTheme: false,
+    allowGETipSet: false
+};
+
+const chat = new Chat(settings);
 
 var SKIN_URL = "./skins/",
     PI_2 = Math.PI * 2,
@@ -207,7 +225,7 @@ function wsMessage(data) {
                 message: message,
                 time: syncUpdStamp
             });
-            drawChat();
+            chat.draw();
             break;
         case 0xFE: // server stat
             stats.info = JSON.parse(reader.getStringUTF8());
@@ -247,9 +265,8 @@ function gameReset() {
     Misc.cleanupObject(cells);
     Misc.cleanupObject(border);
     Misc.cleanupObject(leaderboard);
-    Misc.cleanupObject(chat);
+    chat.cleanup();
     Misc.cleanupObject(stats);
-    chat.messages = [];
     leaderboard.items = [];
     cells.mine = [];
     cells.byId = { };
@@ -279,12 +296,6 @@ var leaderboard = Object.create({
     items: null,
     canvas: document.createElement("canvas"),
     teams: ["#F33", "#3F3", "#33F"]
-});
-var chat = Object.create({
-    messages: [],
-    waitUntil: 0,
-    canvas: document.createElement("canvas"),
-    visible: false,
 });
 var stats = Object.create({
     framesPerSecond: 0,
@@ -325,20 +336,6 @@ var mouseX = NaN;
 var mouseY = NaN;
 var mouseZ = 1;
 
-var settings = {
-    mobile: "createTouch" in document,
-    showMass: false,
-    showNames: true,
-    showLeaderboard: true,
-    showChat: true,
-    showGrid: true,
-    showTextOutline: true,
-    showColor: true,
-    showSkins: true,
-    showMinimap: true,
-    darkTheme: false,
-    allowGETipSet: false
-};
 var pressed = {
     space: false,
     w: false,
@@ -403,50 +400,6 @@ function fromCamera(ctx) {
     ctx.translate(cameraX, cameraY);
     scaleBack(ctx);
     ctx.translate(-mainCanvas.width / 2, -mainCanvas.height / 2);
-}
-
-function drawChat() {
-    if (chat.messages.length === 0 && settings.showChat)
-        return chat.visible = false;
-    chat.visible = true;
-    var canvas = chat.canvas;
-    var ctx = canvas.getContext("2d");
-    var latestMessages = chat.messages.slice(-15);
-    var lines = [];
-    for (var i = 0, len = latestMessages.length; i < len; i++)
-        lines.push([
-            {
-                text: latestMessages[i].name,
-                color: latestMessages[i].color.toString()
-            }, {
-                text: " " + latestMessages[i].message,
-                color: settings.darkTheme ? "#FFF" : "#000"
-            }
-        ]);
-    var width = 0;
-    var height = 20 * len + 2;
-    for (var i = 0; i < len; i++) {
-        var thisLineWidth = 0;
-        var complexes = lines[i];
-        for (var j = 0; j < complexes.length; j++) {
-            ctx.font = "18px Ubuntu";
-            complexes[j].width = ctx.measureText(complexes[j].text).width;
-            thisLineWidth += complexes[j].width;
-        }
-        width = Math.max(thisLineWidth, width);
-    }
-    canvas.width = width;
-    canvas.height = height;
-    for (var i = 0; i < len; i++) {
-        width = 0;
-        var complexes = lines[i];
-        for (var j = 0; j < complexes.length; j++) {
-            ctx.font = "18px Ubuntu";
-            ctx.fillStyle = complexes[j].color;
-            ctx.fillText(complexes[j].text, width, 20 * (1 + i));
-            width += complexes[j].width;
-        }
-    }
 }
 
 function drawStats() {
@@ -1087,11 +1040,11 @@ function init() {
     };
     chatBox.onblur = function() {
         isTyping = false;
-        drawChat();
+        chat.draw();
     };
     chatBox.onfocus = function() {
         isTyping = true;
-        drawChat();
+        chat.draw();
     };
     mainCanvas.onmousemove = function(event) {
         mouseX = event.clientX;
@@ -1144,7 +1097,7 @@ window.setNames = function(a) {
 };
 window.setChatHide = function(a) {
     settings.showChat = !a;
-    drawChat();
+    chat.draw();
 };
 window.setMinimap = function(a) {
     settings.showMinimap = !a;
