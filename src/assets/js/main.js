@@ -4,38 +4,15 @@ import '../css/gallery.css';
 import Reader from './byte/Reader';
 import Writer from './byte/Writer';
 
+import Color from './util/Color';
+import Hacker from './util/Hack';
+Hacker.hack();
+
 if (navigator.appVersion.indexOf("MSIE") != -1)
     alert("You're using a pretty old browser, some parts of the website might not work properly.");
 
-Date.now || (Date.now = function() {
-    return (+new Date).getTime();
-});
 var LOAD_START = Date.now();
-Array.prototype.peek = function() {
-    return this[this.length - 1];
-};
-Array.prototype.remove = function(a) {
-    var i = this.indexOf(a);
-    if (i !== -1) this.splice(i, 1);
-    return i !== -1;
-};
-function bytesToColor(r, g, b) {
-    var r1 = ("00" + (~~r).toString(16)).slice(-2);
-    var g1 = ("00" + (~~g).toString(16)).slice(-2);
-    var b1 = ("00" + (~~b).toString(16)).slice(-2);
-    return `#${r1}${g1}${b1}`;
-}
-function colorToBytes(color) {
-    if (color.length === 4)
-        return { r: parseInt(color[1] + color[1], 16), g: parseInt(color[2] + color[2], 16), b: parseInt(color[3] + color[3], 16) };
-    else if (color.length === 7)
-        return { r: parseInt(color[1] + color[2], 16), g: parseInt(color[3] + color[4], 16), b: parseInt(color[5] + color[6], 16) };
-    throw new Error(`invalid color ${color}`);
-}
-function darkenColor(color) {
-    var a = colorToBytes(color);
-    return bytesToColor(a.r * .9, a.g * .9, a.b * .9);
-}
+
 function cleanupObject(object) {
     for (var i in object)
         delete object[i];
@@ -145,7 +122,7 @@ function wsMessage(data) {
                 updColor = !!(flags & 0x02);
                 updName = !!(flags & 0x08);
                 updSkin = !!(flags & 0x04);
-                color = updColor ? bytesToColor(reader.getUint8(), reader.getUint8(), reader.getUint8()) : null;
+                color = updColor ? new Color(reader.getUint8(), reader.getUint8(), reader.getUint8()) : null;
                 skin = updSkin ? reader.getStringUTF8() : null;
                 name = updName ? reader.getStringUTF8() : null;
 
@@ -248,7 +225,7 @@ function wsMessage(data) {
             break;
         case 0x63: // chat message
             var flags = reader.getUint8();
-            var color = bytesToColor(reader.getUint8(), reader.getUint8(), reader.getUint8());
+            var color = new Color(reader.getUint8(), reader.getUint8(), reader.getUint8());
             
             var name = reader.getStringUTF8().trim();
             var reg = /\{([\w]+)\}/.exec(name);
@@ -484,7 +461,7 @@ function drawChat() {
         lines.push([
             {
                 text: latestMessages[i].name,
-                color: latestMessages[i].color
+                color: latestMessages[i].color.toString()
             }, {
                 text: " " + latestMessages[i].message,
                 color: settings.darkTheme ? "#FFF" : "#000"
@@ -851,8 +828,8 @@ Cell.prototype = {
     },
     setColor: function(value) {
         if (!value) { log.warn("got no color"); return; }
-        this.color = value;
-        this.sColor = darkenColor(value);
+        this.color = value.toString();
+        this.sColor = value.darken().toString();
     },
     draw: function(ctx) {
         ctx.save();
