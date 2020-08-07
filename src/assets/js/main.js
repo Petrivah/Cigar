@@ -408,7 +408,7 @@ function drawStats() {
         `${stats.info.playersTotal} / ${stats.info.playersLimit} players`,
         `${stats.info.playersAlive} playing`,
         `${stats.info.playersSpect} spectating`,
-        `${(stats.info.update * 2.5).toFixed(1)}% load @ ${prettyPrintTime(stats.info.uptime)}`
+        `${(stats.info.update * 2.5).toFixed(1)}% load @ ${Misc.prettyPrintTime(stats.info.uptime)}`
     ];
     var width = 0;
     for (var i = 0; i < rows.length; i++)
@@ -420,16 +420,6 @@ function drawStats() {
     ctx.textBaseline = "top";
     for (var i = 0; i < rows.length; i++)
         ctx.fillText(rows[i], 2, -2 + i * (14 + 2));
-}
-function prettyPrintTime(seconds) {
-    seconds = ~~seconds;
-    var minutes = ~~(seconds / 60);
-    if (minutes < 1) return "<1 min";
-    var hours = ~~(minutes / 60);
-    if (hours < 1) return minutes + "min";
-    var days = ~~(hours / 24);
-    if (days < 1) return hours + "h";
-    return days + "d";
 }
 
 function drawGrid() {
