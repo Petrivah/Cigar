@@ -11,6 +11,7 @@ import Hacker from './util/Hack';
 
 import Chat from './game/Chat';
 import Leaderboard from './game/Leaderboard';
+import Stats from './game/Stats';
 
 import Connection from './network/Connection';
 
@@ -37,6 +38,7 @@ var settings = {
 
 const chat = new Chat(settings);
 const leaderboard = new Leaderboard(settings);
+const stats = new Stats(settings);
 
 var SKIN_URL = "./skins/",
     PI_2 = Math.PI * 2,
@@ -232,7 +234,7 @@ function wsMessage(data) {
         case 0xFE: // server stat
             stats.info = JSON.parse(reader.getStringUTF8());
             stats.latency = syncUpdStamp - stats.pingLoopStamp;
-            drawStats();
+            stats.draw();
             break;
         default:
             // invalid packet
@@ -268,7 +270,7 @@ function gameReset() {
     Misc.cleanupObject(border);
     leaderboard.cleanup();
     chat.cleanup();
-    Misc.cleanupObject(stats);
+    stats.cleanup();
     leaderboard.items = [];
     cells.mine = [];
     cells.byId = { };
@@ -292,19 +294,6 @@ var border = Object.create({
     height: 4000,
     centerX: -1,
     centerY: -1
-});
-
-var stats = Object.create({
-    framesPerSecond: 0,
-    latency: NaN,
-    supports: null,
-    info: null,
-    pingLoopId: NaN,
-    pingLoopStamp: null,
-    canvas: document.createElement("canvas"),
-    visible: false,
-    score: NaN,
-    maxScore: 0
 });
 
 var syncUpdStamp = Date.now();
@@ -394,32 +383,6 @@ function fromCamera(ctx) {
     ctx.translate(cameraX, cameraY);
     scaleBack(ctx);
     ctx.translate(-mainCanvas.width / 2, -mainCanvas.height / 2);
-}
-
-function drawStats() {
-    if (!stats.info) return stats.visible = false;
-    stats.visible = true;
-
-    var canvas = stats.canvas;
-    var ctx = canvas.getContext("2d");
-    ctx.font = "14px Ubuntu";
-    var rows = [
-        `${stats.info.name} (${stats.info.mode})`,
-        `${stats.info.playersTotal} / ${stats.info.playersLimit} players`,
-        `${stats.info.playersAlive} playing`,
-        `${stats.info.playersSpect} spectating`,
-        `${(stats.info.update * 2.5).toFixed(1)}% load @ ${Misc.prettyPrintTime(stats.info.uptime)}`
-    ];
-    var width = 0;
-    for (var i = 0; i < rows.length; i++)
-        width = Math.max(width, 2 + ctx.measureText(rows[i]).width + 2);
-    canvas.width = width;
-    canvas.height = rows.length * (14 + 2);
-    ctx.font = "14px Ubuntu";
-    ctx.fillStyle = settings.darkTheme ? "#AAA" : "#555";
-    ctx.textBaseline = "top";
-    for (var i = 0; i < rows.length; i++)
-        ctx.fillText(rows[i], 2, -2 + i * (14 + 2));
 }
 
 function drawGrid() {
@@ -1011,7 +974,7 @@ window.setserver = function(arg) {
 };
 window.setDarkTheme = function(a) {
     settings.darkTheme = a;
-    drawStats();
+    stats.draw();
 };
 window.setShowMass = function(a) {
     settings.showMass = a;
